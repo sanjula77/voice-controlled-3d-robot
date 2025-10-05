@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { Suspense, useState } from 'react';
 import { Scene } from './components/Scene';
+import { ARScene } from './components/ARScene';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -23,6 +24,7 @@ function VoiceControlsWithConversation() {
 function AppContent() {
   const { theme } = useTheme();
   const [isLexiInitialized, setIsLexiInitialized] = useState(false);
+  const [isARMode, setIsARMode] = useState(false);
 
 
   const handleLexiInitialized = () => {
@@ -67,31 +69,48 @@ function AppContent() {
                 3D AI Assistant • Interactive Experience
               </p>
             </div>
-            <div className="absolute right-4">
+            <div className="absolute right-4 flex items-center space-x-3">
+              {/* AR Mode Toggle */}
+              <button
+                onClick={() => setIsARMode(!isARMode)}
+                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${isARMode
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : theme === 'dark'
+                    ? 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                  }`}
+                title={isARMode ? 'Switch to Regular Mode' : 'Switch to AR Mode'}
+              >
+                {isARMode ? '📹 AR' : '🎮 3D'}
+              </button>
               <ThemeToggle />
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3D Canvas */}
-      <Suspense fallback={<LoadingSpinner />}>
-        <Canvas
-          camera={{
-            position: [0, 1, 5],
-            fov: 50,
-            near: 0.1,
-            far: 1000
-          }}
-          shadows
-          className="w-full h-full"
-          style={{
-            background: getCanvasBackground()
-          }}
-        >
-          <Scene />
-        </Canvas>
-      </Suspense>
+      {/* 3D Canvas or AR Scene */}
+      {isARMode ? (
+        <ARScene className="w-full h-full" />
+      ) : (
+        <Suspense fallback={<LoadingSpinner />}>
+          <Canvas
+            camera={{
+              position: [0, 1, 5],
+              fov: 50,
+              near: 0.1,
+              far: 1000
+            }}
+            shadows
+            className="w-full h-full"
+            style={{
+              background: getCanvasBackground()
+            }}
+          >
+            <Scene />
+          </Canvas>
+        </Suspense>
+      )}
 
       {/* Control Instructions */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
@@ -100,18 +119,37 @@ function AppContent() {
           : 'bg-black/80 text-white border-white/10'
           }`}>
           <div className="flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-6">
-            <div className="flex items-center space-x-2">
-              <span className="text-blue-400">🖱️</span>
-              <span>Drag to rotate</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-green-400">🔍</span>
-              <span>Scroll to zoom</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-purple-400">📱</span>
-              <span>Touch friendly</span>
-            </div>
+            {isARMode ? (
+              <>
+                <div className="flex items-center space-x-2">
+                  <span className="text-blue-400">📹</span>
+                  <span>AR Mode Active</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-green-400">🖱️</span>
+                  <span>Drag to rotate</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-purple-400">🔍</span>
+                  <span>Scroll to zoom</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center space-x-2">
+                  <span className="text-blue-400">🖱️</span>
+                  <span>Drag to rotate</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-green-400">🔍</span>
+                  <span>Scroll to zoom</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-purple-400">📱</span>
+                  <span>Touch friendly</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
