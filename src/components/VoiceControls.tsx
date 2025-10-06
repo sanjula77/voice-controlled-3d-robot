@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Mic, MicOff, Brain, Volume2, Pause, Play, Square } from 'lucide-react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { speechService } from '../services/speechService';
@@ -12,7 +13,7 @@ interface VoiceControlsProps {
 
 export function VoiceControls({ onMessage }: VoiceControlsProps) {
     const { theme } = useTheme();
-    const { setVoiceState, updateAudioLevel } = useVoiceState();
+    const { setVoiceState, updateAudioLevel, analyzeSentiment } = useVoiceState();
     const [apiKey, setApiKey] = useState('');
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -119,6 +120,13 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
                 });
             }
 
+            // Update emotion after user message processed
+            try {
+                await analyzeSentiment(userText);
+            } catch (error) {
+                // Sentiment analysis failed, continue with neutral emotion
+            }
+
             // Hide thinking indicator
             setIsThinking(false);
             setVoiceState({ isThinking: false });
@@ -143,28 +151,39 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
         }
     };
 
-    const getStatusColor = () => {
-        if (speechRecognition.isListening) return 'text-red-500';
-        if (isThinking) return 'text-purple-500';
-        if (isProcessing) return 'text-yellow-500';
-        if (textToSpeech.isSpeaking) return 'text-green-500';
-        return 'text-gray-500';
-    };
-
-    const getStatusText = () => {
-        if (speechRecognition.isListening) return 'Listening...';
-        if (isThinking) return 'Lexi is thinking...';
-        if (isProcessing) return 'Processing...';
-        if (textToSpeech.isSpeaking) return 'Speaking...';
+    // Status label/style for compact text-only chip (no icons)
+    const getStatusLabel = () => {
+        if (speechRecognition.isListening) return 'Listening';
+        if (isThinking) return 'Thinking';
+        if (isProcessing) return 'Processing';
+        if (textToSpeech.isSpeaking) return 'Speaking';
         return 'Ready';
     };
 
-    const getStatusIcon = () => {
-        if (speechRecognition.isListening) return '🎤';
-        if (isThinking) return '🧠';
-        if (isProcessing) return '⚡';
-        if (textToSpeech.isSpeaking) return '🔊';
-        return '💬';
+    const getStatusClass = () => {
+        const tone = theme === 'dark'
+            ? {
+                base: 'px-2 py-1 rounded-full text-xs',
+                listening: 'bg-rose-500/20 text-rose-200',
+                thinking: 'bg-violet-500/25 text-violet-200',
+                processing: 'bg-amber-500/20 text-amber-200',
+                speaking: 'bg-emerald-500/20 text-emerald-200',
+                ready: 'bg-indigo-500/20 text-indigo-200',
+            }
+            : {
+                base: 'px-2 py-1 rounded-full text-xs',
+                listening: 'bg-rose-600/10 text-rose-700',
+                thinking: 'bg-violet-600/10 text-violet-700',
+                processing: 'bg-amber-600/10 text-amber-700',
+                speaking: 'bg-emerald-600/10 text-emerald-700',
+                ready: 'bg-indigo-600/10 text-indigo-700',
+            };
+
+        if (speechRecognition.isListening) return `${tone.base} ${tone.listening}`;
+        if (isThinking) return `${tone.base} ${tone.thinking}`;
+        if (isProcessing) return `${tone.base} ${tone.processing}`;
+        if (textToSpeech.isSpeaking) return `${tone.base} ${tone.speaking}`;
+        return `${tone.base} ${tone.ready}`;
     };
 
     if (showApiKeyInput) {
@@ -212,139 +231,92 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
     }
 
     return (
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-20">
-            <div className={`backdrop-blur-sm px-6 py-4 rounded-xl shadow-lg border transition-colors duration-300 ${theme === 'dark'
-                ? 'bg-slate-800/80 text-slate-200 border-slate-600/30'
-                : 'bg-white/80 text-gray-800 border-gray-200/50'
-                }`}>
-                <div className="flex items-center space-x-4">
-                    {/* Microphone Button */}
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20">
+            <div className={`glass-panel-dark rounded-2xl px-5 py-4 shadow-2xl border border-white/10 ${theme === 'dark' ? '' : 'glass-panel'} w-[420px] max-w-[92vw]`}>
+                {/* Layout: avatar | content | controls */}
+                <div className="grid grid-cols-[auto,1fr,auto] items-center gap-5">
+                    {/* Mic button */}
                     <button
+                        aria-label={speechRecognition.isListening ? 'Stop listening' : 'Start listening'}
                         onClick={speechRecognition.toggleListening}
                         disabled={isProcessing || isThinking || textToSpeech.isSpeaking}
-                        className={`relative w-12 h-12 rounded-full transition-all duration-200 ${speechRecognition.isListening
-                            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                        className={`relative w-12 h-12 rounded-xl flex items-center justify-center glow-effect ${speechRecognition.isListening
+                            ? 'bg-rose-500'
                             : isThinking
-                                ? 'bg-purple-500 hover:bg-purple-600'
-                                : 'bg-blue-500 hover:bg-blue-600'
-                            } ${isProcessing || isThinking || textToSpeech.isSpeaking
-                                ? 'opacity-50 cursor-not-allowed'
-                                : 'hover:scale-105'
-                            }`}
+                                ? 'bg-violet-500'
+                                : 'bg-indigo-500'
+                            } ${isProcessing || isThinking || textToSpeech.isSpeaking ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
                     >
-                        <span className="text-white text-xl">
-                            {speechRecognition.isListening ? '🎤' : isThinking ? '🧠' : '🎙️'}
-                        </span>
-
-                        {/* Listening animation */}
-                        {speechRecognition.isListening && (
-                            <div className="absolute inset-0 rounded-full border-2 border-red-300 animate-ping"></div>
-                        )}
-
-                        {/* Thinking animation */}
-                        {isThinking && (
-                            <div className="absolute inset-0 rounded-full border-2 border-purple-300 animate-pulse"></div>
-                        )}
+                        {speechRecognition.isListening ? <MicOff className="w-5 h-5 text-white" /> : isThinking ? <Brain className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
+                        {speechRecognition.isListening && <div className="absolute inset-0 rounded-xl border-2 border-rose-300 animate-ping" />}
+                        {isThinking && <div className="absolute inset-0 rounded-xl border-2 border-violet-300 animate-pulse" />}
                     </button>
 
-                    {/* Status Display */}
-                    <div className="flex flex-col">
-                        <div className={`flex items-center space-x-2 text-sm font-medium ${getStatusColor()}`}>
-                            <span>{getStatusIcon()}</span>
-                            <span>{getStatusText()}</span>
+                    {/* Content */}
+                    <div className="min-w-[12rem]">
+                        <div className="flex items-center gap-3">
+                            <span className={getStatusClass()}>{getStatusLabel()}</span>
+                            <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-violet-500/25 text-violet-200' : 'bg-violet-600/10 text-violet-700'}`}>
+                                <Brain className="w-3 h-3" />
+                                <span className="font-medium">{aiService.isReady() ? 'AI Brain' : 'Basic Mode'}</span>
+                            </span>
+                            {/* Model name removed per design */}
                         </div>
+                        {/* Transcript preview removed per design */}
+                    </div>
 
-                        {/* Transcript Display */}
-                        {speechRecognition.transcript && (
-                            <div className="text-xs opacity-80 mt-1 max-w-xs truncate">
-                                "{speechRecognition.transcript}"
+                    {/* Controls */}
+                    <div className="flex items-center gap-2">
+                        {textToSpeech.isSpeaking && (
+                            <button
+                                aria-label={textToSpeech.isPaused ? 'Resume' : 'Pause'}
+                                onClick={textToSpeech.togglePause}
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+                            >
+                                {textToSpeech.isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                            </button>
+                        )}
+                        {textToSpeech.isSpeaking && (
+                            <button
+                                aria-label="Stop"
+                                onClick={textToSpeech.stop}
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}
+                            >
+                                <Square className="w-4 h-4" />
+                            </button>
+                        )}
+                        {!textToSpeech.isSpeaking && (
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center opacity-70 border border-white/10 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-700'}">
+                                <Volume2 className="w-4 h-4" />
                             </div>
                         )}
-
-                        {/* AI Brain Indicator */}
-                        <div className="flex items-center space-x-1 mt-1">
-                            <span className="text-xs opacity-60">
-                                {aiService.isReady() ? '🧠 AI Brain' : '🤖 Basic Mode'}
-                            </span>
-                            {lastModelUsed && (
-                                <span className="text-xs opacity-40 ml-1">
-                                    ({lastModelUsed})
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Control Buttons */}
-                    <div className="flex space-x-2">
-                        {textToSpeech.isSpeaking && (
-                            <button
-                                onClick={textToSpeech.togglePause}
-                                className={`w-8 h-8 rounded-full transition-colors duration-200 ${theme === 'dark'
-                                    ? 'bg-slate-600 hover:bg-slate-500 text-slate-200'
-                                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                                    }`}
-                            >
-                                {textToSpeech.isPaused ? '▶️' : '⏸️'}
-                            </button>
-                        )}
-
-                        {textToSpeech.isSpeaking && (
-                            <button
-                                onClick={textToSpeech.stop}
-                                className={`w-8 h-8 rounded-full transition-colors duration-200 ${theme === 'dark'
-                                    ? 'bg-slate-600 hover:bg-slate-500 text-slate-200'
-                                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                                    }`}
-                            >
-                                ⏹️
-                            </button>
-                        )}
                     </div>
                 </div>
 
-                {/* Error Display */}
-                {(speechRecognition.error || textToSpeech.error) && (
-                    <div className="mt-3 p-2 bg-red-500/20 border border-red-500/30 rounded-lg">
-                        <p className="text-xs text-red-400">
-                            {speechRecognition.error || textToSpeech.error}
-                        </p>
-                        <button
-                            onClick={() => {
-                                speechRecognition.clearError();
-                                textToSpeech.clearError();
-                            }}
-                            className="text-xs text-red-300 hover:text-red-200 mt-1"
-                        >
-                            Dismiss
-                        </button>
+                {/* Footer actions */}
+                <div className="mt-3 flex items-center justify-between">
+                    <div className={`text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'} opacity-80`}>
+                        {speechRecognition.isSupported ? 'Click microphone to talk to Lexi' : 'Speech recognition not supported in this browser'}
                     </div>
-                )}
-
-                {/* Instructions */}
-                <div className="mt-3 text-xs opacity-60 text-center">
-                    {speechRecognition.isSupported
-                        ? 'Click microphone to talk to Lexi'
-                        : 'Speech recognition not supported in this browser'
-                    }
-                </div>
-
-                {/* Debug Panel Toggle */}
-                {aiService.isReady() && (
-                    <div className="mt-2 text-center">
-                        <button
-                            onClick={() => setShowDebugPanel(!showDebugPanel)}
-                            className="text-xs text-blue-400 hover:text-blue-300"
-                        >
+                    {aiService.isReady() && (
+                        <button onClick={() => setShowDebugPanel(!showDebugPanel)} className="text-xs text-blue-300 hover:text-blue-200 font-medium">
                             {showDebugPanel ? 'Hide' : 'Show'} Model Debug
                         </button>
+                    )}
+                </div>
+
+                {/* Error */}
+                {(speechRecognition.error || textToSpeech.error) && (
+                    <div className="mt-3 p-2 bg-red-500/20 border border-red-500/30 rounded-lg">
+                        <p className="text-xs text-red-400">{speechRecognition.error || textToSpeech.error}</p>
+                        <button onClick={() => { speechRecognition.clearError(); textToSpeech.clearError(); }} className="text-xs text-red-300 hover:text-red-200 mt-1">Dismiss</button>
                     </div>
                 )}
-
             </div>
 
             {/* Debug Panel */}
             {showDebugPanel && aiService.isReady() && (
-                <div className={`absolute bottom-32 left-1/2 transform -translate-x-1/2 z-20 p-3 rounded-lg shadow-lg border transition-colors duration-300 max-w-md ${theme === 'dark'
+                <div className={`absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 p-3 rounded-lg shadow-lg border transition-colors duration-300 max-w-md ${theme === 'dark'
                     ? 'bg-slate-800/90 text-slate-200 border-slate-600/50'
                     : 'bg-white/90 text-gray-800 border-gray-200/50'
                     }`}>

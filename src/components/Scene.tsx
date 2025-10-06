@@ -1,13 +1,19 @@
 import { OrbitControls } from '@react-three/drei';
 import { Robot } from './Robot';
 import { GroundPlane } from './GroundPlane';
+import { LightingRig } from './LightingRig';
+import { PostProcessingEffects } from './PostProcessingEffects';
 import { useConversation } from '../contexts/ConversationContext';
 import { useVoiceState } from '../contexts/VoiceStateContext';
 import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 
-export function Scene() {
-  const { messages } = useConversation();
+interface SceneProps {
+  isARMode?: boolean;
+}
+
+export function Scene({ isARMode = false }: SceneProps) {
+  useConversation();
   const { voiceState } = useVoiceState();
   const { gl } = useThree();
 
@@ -31,33 +37,28 @@ export function Scene() {
     };
   }, [gl]);
 
-  // Get the latest message to determine robot state
-  const latestMessage = messages[messages.length - 1];
-  const isProcessing = messages.length > 0 && !latestMessage?.isUser;
+  // Access messages (reserved for future scene reactions)
 
   return (
     <>
-      {/* Enhanced lighting setup */}
-      <ambientLight intensity={0.3} />
-      <directionalLight
-        position={[5, 5, 5]}
-        intensity={1.2}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-      />
-      <directionalLight position={[-3, 2, -3]} intensity={0.4} />
+      {/* Cinematic lighting */}
+      <LightingRig />
 
       {/* Ground plane */}
       <GroundPlane />
 
-      {/* Robot model with voice state */}
+      {/* Robot model with voice state - positioned based on mode */}
       <Robot
         isListening={voiceState.isListening}
         isSpeaking={voiceState.isSpeaking}
         isProcessing={voiceState.isProcessing || voiceState.isThinking}
         currentAudioLevel={voiceState.currentAudioLevel}
+        isARMode={isARMode}
+        emotion={voiceState.emotion}
       />
+
+      {/* Post-processing (Bloom + DOF) - disabled in AR */}
+      <PostProcessingEffects enabled={!isARMode} />
 
       {/* Enhanced camera controls */}
       <OrbitControls

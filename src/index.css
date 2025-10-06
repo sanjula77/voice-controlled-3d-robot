@@ -2,6 +2,126 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    font-family: 'Inter', 'Poppins', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-panel-dark {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glow-effect {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3),
+                0 0 40px rgba(99, 102, 241, 0.1);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.5),
+                 0 0 40px rgba(99, 102, 241, 0.3);
+  }
+
+  /* Cool, moon-like glow for dark-mode icon */
+  .moon-glow {
+    text-shadow: 0 0 14px rgba(125, 211, 252, 0.4),
+                 0 0 28px rgba(99, 102, 241, 0.25);
+  }
+
+  .holographic-bg {
+    background: linear-gradient(135deg,
+      #0f172a 0%,
+      #1e293b 25%,
+      #334155 50%,
+      #1e293b 75%,
+      #0f172a 100%);
+    position: relative;
+  }
+
+  .holographic-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .holographic-bg::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+      linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.03) 50%, transparent 100%),
+      linear-gradient(0deg, transparent 0%, rgba(139, 92, 246, 0.03) 50%, transparent 100%);
+    background-size: 100px 100px, 100px 100px;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  .holographic-bg-light {
+    background: linear-gradient(135deg,
+      #f8fafc 0%,
+      #e2e8f0 25%,
+      #cbd5e1 50%,
+      #e2e8f0 75%,
+      #f8fafc 100%);
+    position: relative;
+  }
+
+  .holographic-bg-light::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .holographic-bg-light::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+      linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.04) 50%, transparent 100%),
+      linear-gradient(0deg, transparent 0%, rgba(139, 92, 246, 0.04) 50%, transparent 100%);
+    background-size: 100px 100px, 100px 100px;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+@keyframes bgShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 body {
   margin: 0;
   padding: 0;

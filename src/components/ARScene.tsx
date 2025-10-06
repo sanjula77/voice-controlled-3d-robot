@@ -4,6 +4,8 @@ import { OrbitControls } from '@react-three/drei';
 import { Robot } from './Robot';
 import { GroundPlane } from './GroundPlane';
 import { LoadingSpinner } from './LoadingSpinner';
+import { PostProcessingEffects } from './PostProcessingEffects';
+import { LightingRig } from './LightingRig';
 import { useConversation } from '../contexts/ConversationContext';
 import { useVoiceState } from '../contexts/VoiceStateContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -196,28 +198,29 @@ export function ARScene({ className = '' }: ARSceneProps) {
                     style={{
                         background: 'transparent', // Transparent background for AR effect
                     }}
+                    dpr={[1, 1.75]}
+                    onCreated={({ gl }) => {
+                        // Slightly higher exposure for webcam backdrop
+                        try { (gl as any).toneMappingExposure = 1.02; } catch { }
+                    }}
                 >
-                    {/* Enhanced lighting setup for AR */}
-                    <ambientLight intensity={0.4} />
-                    <directionalLight
-                        position={[5, 5, 5]}
-                        intensity={1.0}
-                        castShadow={!isMobile} // Disable shadows on mobile for performance
-                        shadow-mapSize-width={isMobile ? 512 : 1024}
-                        shadow-mapSize-height={isMobile ? 512 : 1024}
-                    />
-                    <directionalLight position={[-3, 2, -3]} intensity={0.3} />
-                    <pointLight position={[0, 3, 0]} intensity={0.5} />
+                    {/* Cinematic but softer lighting for AR */}
+                    <LightingRig variant="ar" />
+
+                    {/* Subtle bloom in AR to match 3D glow; no DOF */}
+                    <PostProcessingEffects enabled variant="ar" />
 
                     {/* Ground plane with transparency */}
                     <GroundPlane isARMode={true} />
 
-                    {/* Robot model with voice state */}
+                    {/* Robot model with voice state - positioned for AR mode */}
                     <Robot
                         isListening={voiceState.isListening}
                         isSpeaking={voiceState.isSpeaking}
                         isProcessing={voiceState.isProcessing || voiceState.isThinking}
                         currentAudioLevel={voiceState.currentAudioLevel}
+                        isARMode={true}
+                        emotion={voiceState.emotion}
                     />
 
                     {/* Camera controls optimized for AR */}
@@ -235,24 +238,9 @@ export function ARScene({ className = '' }: ARSceneProps) {
                 </Canvas>
             </Suspense>
 
-            {/* AR Status Indicator */}
-            {isWebcamActive && (
-                <div className={`absolute top-4 left-4 z-20 backdrop-blur-sm px-3 py-2 rounded-lg text-xs font-medium shadow-lg border transition-colors duration-300 ${theme === 'dark'
-                    ? 'bg-green-500/90 text-white border-green-400/30'
-                    : 'bg-green-500/90 text-white border-green-400/30'
-                    }`}>
-                    📹 AR Mode Active
-                </div>
-            )}
+            {/* AR Status Indicator removed per design */}
 
-      {/* Performance indicator */}
-      <div className={`absolute top-16 right-4 z-20 backdrop-blur-sm px-3 py-2 rounded-lg text-xs font-medium shadow-lg border transition-colors duration-300 ${
-        theme === 'dark'
-          ? 'bg-blue-500/90 text-white border-blue-400/30'
-          : 'bg-blue-500/90 text-white border-blue-400/30'
-      }`}>
-        ⚡ Optimized
-      </div>
+            {/* Performance indicator removed per design */}
         </div>
     );
 }

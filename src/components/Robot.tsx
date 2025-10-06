@@ -1,20 +1,24 @@
 import { useGLTF } from '@react-three/drei';
 import { useRef, Suspense, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group, Mesh } from 'three';
+import { Group, Mesh, Color } from 'three';
 
 interface RobotProps {
   isListening?: boolean;
   isSpeaking?: boolean;
   isProcessing?: boolean;
   currentAudioLevel?: number; // 0-1 for mouth sync
+  isARMode?: boolean;
+  emotion?: 'positive' | 'neutral' | 'concerned';
 }
 
-function RobotModel({ isListening, isSpeaking, isProcessing, currentAudioLevel = 0 }: RobotProps) {
+function RobotModel({ isListening, isSpeaking, isProcessing, currentAudioLevel = 0, isARMode = false, emotion = 'neutral' }: RobotProps) {
   const { scene } = useGLTF('/robot.glb');
   const groupRef = useRef<Group>(null);
   const mouthMorphRef = useRef<number>(0);
   const [animationState, setAnimationState] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle');
+  const emissiveColorRef = useRef<Color>(new Color('#ffffff'));
+  const emissiveIntensityRef = useRef<number>(0.1);
 
   // Setup mouth morph target
   useEffect(() => {
@@ -56,10 +60,40 @@ function RobotModel({ isListening, isSpeaking, isProcessing, currentAudioLevel =
     }
   }, [isListening, isSpeaking, isProcessing]);
 
-  // Enhanced animations based on state with mouth sync
+  // Enhanced animations based on state with mouth sync and emotion-based emissive
   useFrame((state) => {
     if (groupRef.current) {
       const time = state.clock.getElapsedTime();
+
+      // Smooth emotion-based emissive color transitions
+      const emotionColors = {
+        positive: '#00e5ff', // warm cyan
+        neutral: '#ffffff',  // soft white
+        concerned: '#ffb74d' // amber tone
+      };
+      const targetColor = new Color(emotionColors[emotion]);
+      const targetIntensity = emotion === 'positive' ? 0.3 : emotion === 'concerned' ? 0.2 : 0.1;
+
+      // Lerp emissive color and intensity
+      emissiveColorRef.current.lerp(targetColor, 0.05);
+      emissiveIntensityRef.current += (targetIntensity - emissiveIntensityRef.current) * 0.05;
+
+      // Apply emissive to robot materials
+      scene.traverse((child) => {
+        if (child instanceof Mesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(mat => {
+              if (mat.emissive) {
+                mat.emissive.copy(emissiveColorRef.current);
+                mat.emissiveIntensity = emissiveIntensityRef.current;
+              }
+            });
+          } else if (child.material.emissive) {
+            child.material.emissive.copy(emissiveColorRef.current);
+            child.material.emissiveIntensity = emissiveIntensityRef.current;
+          }
+        }
+      });
 
       // Handle mouth morph target animation (only on Mouth_Blue_Light_0 mesh)
       scene.traverse((child) => {
@@ -84,33 +118,44 @@ function RobotModel({ isListening, isSpeaking, isProcessing, currentAudioLevel =
         }
       });
 
+      // Determine robot position based on mode
+      const robotX = isARMode ? -2 : 0; // Left side in AR mode, center in 3D mode
+
       switch (animationState) {
         case 'idle':
-          // Subtle breathing animation - no rotation
-          groupRef.current.position.y = -1 + Math.sin(time * 0.5) * 0.02;
+          // Simple breathing animation - up and down movement
+          groupRef.current.position.x = robotX;
+          groupRef.current.position.y = -1 + Math.sin(time * 0.8) * 0.03;
+          groupRef.current.position.z = 0;
           groupRef.current.rotation.y = 0; // No rotation
           groupRef.current.scale.setScalar(1.5);
           break;
 
         case 'listening':
-          // More active listening animation - no rotation
-          groupRef.current.position.y = -1 + Math.sin(time * 2) * 0.05;
+          // Breathing animation while listening
+          groupRef.current.position.x = robotX;
+          groupRef.current.position.y = -1 + Math.sin(time * 0.8) * 0.03;
+          groupRef.current.position.z = 0;
           groupRef.current.rotation.y = 0; // No rotation
-          groupRef.current.scale.setScalar(1.5 + Math.sin(time * 3) * 0.05);
+          groupRef.current.scale.setScalar(1.5);
           break;
 
         case 'speaking':
-          // No body animation when speaking - only mouth moves
+          // No breathing animation when speaking - only mouth moves
+          groupRef.current.position.x = robotX;
           groupRef.current.position.y = -1; // Static position
+          groupRef.current.position.z = 0;
           groupRef.current.rotation.y = 0; // No rotation
           groupRef.current.scale.setScalar(1.5); // Static scale
           break;
 
         case 'processing':
-          // Thinking/processing animation - no rotation
-          groupRef.current.position.y = -1 + Math.sin(time * 1.2) * 0.04;
+          // Breathing animation while processing
+          groupRef.current.position.x = robotX;
+          groupRef.current.position.y = -1 + Math.sin(time * 0.8) * 0.03;
+          groupRef.current.position.z = 0;
           groupRef.current.rotation.y = 0; // No rotation
-          groupRef.current.scale.setScalar(1.5 + Math.sin(time * 2) * 0.03);
+          groupRef.current.scale.setScalar(1.5);
           break;
       }
     }
@@ -125,27 +170,7 @@ function RobotModel({ isListening, isSpeaking, isProcessing, currentAudioLevel =
         rotation={[0, 0, 0]}
       />
 
-      {/* Visual indicators for different states */}
-      {animationState === 'listening' && (
-        <mesh position={[0, 2, 0]}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial color="#ff4444" transparent opacity={0.8} />
-        </mesh>
-      )}
-
-      {animationState === 'speaking' && (
-        <mesh position={[0, 2, 0]}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial color="#44ff44" transparent opacity={0.8} />
-        </mesh>
-      )}
-
-      {animationState === 'processing' && (
-        <mesh position={[0, 2, 0]}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial color="#ffaa44" transparent opacity={0.8} />
-        </mesh>
-      )}
+      {/* State indicator spheres removed per design */}
     </group>
   );
 }
@@ -173,7 +198,7 @@ function LoadingFallback() {
   );
 }
 
-export function Robot({ isListening, isSpeaking, isProcessing, currentAudioLevel }: RobotProps) {
+export function Robot({ isListening, isSpeaking, isProcessing, currentAudioLevel, isARMode = false, emotion = 'neutral' }: RobotProps) {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <RobotModel
@@ -181,6 +206,8 @@ export function Robot({ isListening, isSpeaking, isProcessing, currentAudioLevel
         isSpeaking={isSpeaking}
         isProcessing={isProcessing}
         currentAudioLevel={currentAudioLevel}
+        isARMode={isARMode}
+        emotion={emotion}
       />
     </Suspense>
   );
