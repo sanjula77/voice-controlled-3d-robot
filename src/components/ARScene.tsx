@@ -9,6 +9,9 @@ import { LightingRig } from './LightingRig';
 import { useConversation } from '../contexts/ConversationContext';
 import { useVoiceState } from '../contexts/VoiceStateContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLightingEstimation } from '../hooks/useLightingEstimation';
+import { useFaceTracking } from '../hooks/useFaceTracking';
+import { PCFSoftShadowMap } from 'three';
 
 interface ARSceneProps {
     className?: string;
@@ -81,6 +84,21 @@ export function ARScene({ className = '' }: ARSceneProps) {
             cleanupWebcam();
         };
     }, [initializeWebcam, cleanupWebcam]);
+    // Hooks: lighting estimation and face tracking (AR only)
+    const lighting = useLightingEstimation(videoRef, {
+        analysisFps: 12,
+        baseTheme: theme,
+        responsiveness: 0.25,
+    });
+
+    const face = useFaceTracking(videoRef, {
+        analysisFps: 12,
+        responsiveness: 0.3,
+        minScale: 1.4,
+        maxScale: 1.8,
+        maxYOffset: 0.25,
+    });
+
 
     // Handle webcam permission retry
     const handleRetryWebcam = () => {
@@ -201,11 +219,25 @@ export function ARScene({ className = '' }: ARSceneProps) {
                     dpr={[1, 1.75]}
                     onCreated={({ gl }) => {
                         // Slightly higher exposure for webcam backdrop
-                        try { (gl as any).toneMappingExposure = 1.02; } catch { }
+                        try {
+                            (gl as any).toneMappingExposure = 1.02;
+                            // Ensure soft shadow mapping is enabled
+                            (gl as any).shadowMap.enabled = true;
+                            (gl as any).shadowMap.type = PCFSoftShadowMap;
+                            (gl as any).physicallyCorrectLights = true;
+                        } catch { }
                     }}
                 >
-                    {/* Cinematic but softer lighting for AR */}
-                    <LightingRig variant="ar" />
+                    {/* Cinematic but adaptive lighting for AR */}
+                    <LightingRig
+                        variant="ar"
+                        ambientIntensity={lighting.ambientIntensity}
+                        keyIntensity={lighting.keyIntensity}
+                        fillIntensity={lighting.fillIntensity}
+                        rimIntensity={lighting.rimIntensity}
+                        ambientColorHex={lighting.ambientColor}
+                        keyColorHex={lighting.keyColor}
+                    />
 
                     {/* Subtle bloom in AR to match 3D glow; no DOF */}
                     <PostProcessingEffects enabled variant="ar" />
@@ -221,6 +253,8 @@ export function ARScene({ className = '' }: ARSceneProps) {
                         currentAudioLevel={voiceState.currentAudioLevel}
                         isARMode={true}
                         emotion={voiceState.emotion}
+                        externalScale={face.scale}
+                        externalYOffset={face.yOffset}
                     />
 
                     {/* Camera controls optimized for AR */}

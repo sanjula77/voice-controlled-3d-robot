@@ -1,5 +1,5 @@
 import { useGLTF } from '@react-three/drei';
-import { useRef, Suspense, useState, useEffect } from 'react';
+import { useRef, Suspense, useState, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group, Mesh, Color } from 'three';
 
@@ -10,38 +10,53 @@ interface RobotProps {
   currentAudioLevel?: number; // 0-1 for mouth sync
   isARMode?: boolean;
   emotion?: 'positive' | 'neutral' | 'concerned';
+  externalScale?: number; // optional pose-aware scale
+  externalYOffset?: number; // optional pose-aware vertical offset
 }
 
-function RobotModel({ isListening, isSpeaking, isProcessing, currentAudioLevel = 0, isARMode = false, emotion = 'neutral' }: RobotProps) {
+function RobotModel({ isListening, isSpeaking, isProcessing, currentAudioLevel = 0, isARMode = false, emotion = 'neutral', externalScale, externalYOffset }: RobotProps) {
   const { scene } = useGLTF('/robot.glb');
   const groupRef = useRef<Group>(null);
   const mouthMorphRef = useRef<number>(0);
   const [animationState, setAnimationState] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle');
-  const emissiveColorRef = useRef<Color>(new Color('#ffffff'));
-  const emissiveIntensityRef = useRef<number>(0.1);
+  // Cache important mesh references to avoid per-frame traversals
+  const faceBackgroundMeshRef = useRef<Mesh | null>(null); // Robot_Black_Matt_0
+  const eyesMeshRef = useRef<Mesh | null>(null); // Eyes_Blue_Light_0
+  const mouthMeshRef = useRef<Mesh | null>(null); // Mouth_Blue_Light_0
+  const bodyMeshRefs = useRef<Mesh[]>([]); // Robot_White_Glossy_0 (can be multiple)
+  const mouthMorphIndexRef = useRef<number | null>(null);
 
-  // Setup mouth morph target
+  // Setup mesh references and mouth morph target (run once per model load)
   useEffect(() => {
     if (scene) {
-      console.log('=== ROBOT MODEL STRUCTURE ===');
-      // Log the entire model structure first
-      scene.traverse((child) => {
-        console.log('Object:', child.name, 'Type:', child.type, 'Has morph targets:', !!(child instanceof Mesh && child.morphTargetDictionary));
-      });
+      bodyMeshRefs.current = [];
+      faceBackgroundMeshRef.current = null;
+      eyesMeshRef.current = null;
+      mouthMeshRef.current = null;
+      mouthMorphIndexRef.current = null;
 
-      console.log('=== SEARCHING FOR MOUTH MORPH TARGET ===');
-      // Find the specific mouth mesh (only Mouth_Blue_Light_0)
       scene.traverse((child) => {
-        if (child instanceof Mesh && child.name === 'Mouth_Blue_Light_0' && child.morphTargetDictionary) {
-          // Look for the 'mouth' shape key (from your screenshot)
-          const mouthMorphIndex = child.morphTargetDictionary['mouth'];
-
-          if (mouthMorphIndex !== undefined) {
-            console.log('✅ Found mouth morph target at index:', mouthMorphIndex, 'on mesh:', child.name);
-            (child as any).mouthMorphIndex = mouthMorphIndex;
-          } else {
-            console.log('Available morph targets on', child.name, ':', Object.keys(child.morphTargetDictionary));
-          }
+        if (!(child instanceof Mesh)) return;
+        // Ensure shadow casting on all meshes
+        if (child.castShadow !== true) child.castShadow = true;
+        if (child.receiveShadow !== true) child.receiveShadow = true;
+        switch (child.name) {
+          case 'Robot_Black_Matt_0':
+            faceBackgroundMeshRef.current = child;
+            break;
+          case 'Eyes_Blue_Light_0':
+            eyesMeshRef.current = child;
+            break;
+          case 'Mouth_Blue_Light_0':
+            mouthMeshRef.current = child;
+            if (child.morphTargetDictionary) {
+              const idx = child.morphTargetDictionary['mouth'];
+              if (idx !== undefined) mouthMorphIndexRef.current = idx;
+            }
+            break;
+          case 'Robot_White_Glossy_0':
+            bodyMeshRefs.current.push(child);
+            break;
         }
       });
     }
@@ -60,109 +75,158 @@ function RobotModel({ isListening, isSpeaking, isProcessing, currentAudioLevel =
     }
   }, [isListening, isSpeaking, isProcessing]);
 
-  // Enhanced animations based on state with mouth sync and emotion-based emissive
+  // Precompute per-emotion colors (avoid recreating Color objects every frame)
+  const faceBackgroundColor = useMemo(() => {
+    const map = {
+      positive: '#4FD3C4',   // Calm teal – optimistic but mature
+      neutral: '#1E2430',   // Deep desaturated navy – balanced, cinematic
+      concerned: '#E5735C'    // Warm muted coral – gentle tension, not alarming
+    } as const;
+    return new Color(map[emotion]);
+  }, [emotion]);
+
+  const eyeColor = useMemo(() => {
+    const map = {
+      positive: '#F7F7F7',   // Soft mint glow – friendly and modern
+      neutral: '#7AE2CF',   // Cool light blue – focus & calm
+      concerned: '#7AE2CF'    // Pale amber – empathetic concern
+    } as const;
+    return new Color(map[emotion]);
+  }, [emotion]);
+
+  const mouthColor = useMemo(() => {
+    const map = {
+      positive: '#F7F7F7',   // Gentle lime tint – warm smile
+      neutral: '#7AE2CF',   // Soft desaturated blue – neutral calm
+      concerned: '#7AE2CF'    // Light peach – expressive but not loud
+    } as const;
+    return new Color(map[emotion]);
+  }, [emotion]);
+
+  const bodyColor = useMemo(() => {
+    const map = {
+      positive: '#2E3440',   // Deep cyan-blue – confident and cool
+      neutral: '#2E3440',   // Cinematic gray-blue – premium neutral
+      concerned: '#2E3440'    // Muted brick red – tension but stylish
+    } as const;
+    return new Color(map[emotion]);
+  }, [emotion]);
+
+
+  // Intensities per emotion (precomputed outside frame loop)
+  const intensities = useMemo(() => {
+    return {
+      face: emotion === 'positive' ? 1.5 : emotion === 'concerned' ? 1.2 : 1.1,
+      eyes: 2.0,
+      mouth: emotion === 'positive' ? 1.8 : emotion === 'concerned' ? 1.5 : 1.4,
+      body: emotion === 'positive' ? 1.0 : emotion === 'concerned' ? 0.8 : 0.3,
+    } as const;
+  }, [emotion]);
+
+  // Apply emissive only when emotion changes (not every frame)
+  useEffect(() => {
+    const setMat = (mat: any, color: Color, intensity: number) => {
+      if (!mat || !mat.emissive) return;
+      // Avoid redundant writes
+      const currentHex = mat.emissive.getHex();
+      const targetHex = color.getHex();
+      if (currentHex !== targetHex) mat.emissive.copy(color);
+      if (mat.emissiveIntensity !== intensity) mat.emissiveIntensity = intensity;
+      // Tone mapping can dim emissive; disable for UI-like glow
+      if (mat.toneMapped !== false) mat.toneMapped = false;
+    };
+
+    const apply = (mesh: Mesh | null, color: Color, intensity: number) => {
+      if (!mesh) return;
+      const material: any = mesh.material;
+      if (Array.isArray(material)) {
+        material.forEach((mat: any) => setMat(mat, color, intensity));
+      } else {
+        setMat(material, color, intensity);
+      }
+    };
+
+    apply(faceBackgroundMeshRef.current, faceBackgroundColor, intensities.face);
+    apply(eyesMeshRef.current, eyeColor, intensities.eyes);
+    apply(mouthMeshRef.current, mouthColor, intensities.mouth);
+    bodyMeshRefs.current.forEach((m) => apply(m, bodyColor, intensities.body));
+  }, [faceBackgroundColor, eyeColor, mouthColor, bodyColor, intensities]);
+
+  // Enhanced animations based on state with mouth sync; no heavy scene traversals
   useFrame((state) => {
     if (groupRef.current) {
       const time = state.clock.getElapsedTime();
 
-      // Smooth emotion-based emissive color transitions
-      const emotionColors = {
-        positive: '#00e5ff', // warm cyan
-        neutral: '#ffffff',  // soft white
-        concerned: '#ffb74d' // amber tone
-      };
-      const targetColor = new Color(emotionColors[emotion]);
-      const targetIntensity = emotion === 'positive' ? 0.3 : emotion === 'concerned' ? 0.2 : 0.1;
-
-      // Lerp emissive color and intensity
-      emissiveColorRef.current.lerp(targetColor, 0.05);
-      emissiveIntensityRef.current += (targetIntensity - emissiveIntensityRef.current) * 0.05;
-
-      // Apply emissive to robot materials
-      scene.traverse((child) => {
-        if (child instanceof Mesh && child.material) {
-          if (Array.isArray(child.material)) {
-            child.material.forEach(mat => {
-              if (mat.emissive) {
-                mat.emissive.copy(emissiveColorRef.current);
-                mat.emissiveIntensity = emissiveIntensityRef.current;
-              }
-            });
-          } else if (child.material.emissive) {
-            child.material.emissive.copy(emissiveColorRef.current);
-            child.material.emissiveIntensity = emissiveIntensityRef.current;
-          }
-        }
-      });
+      // No material updates here; done in useEffect to avoid jank
 
       // Handle mouth morph target animation (only on Mouth_Blue_Light_0 mesh)
-      scene.traverse((child) => {
-        if (child instanceof Mesh && child.name === 'Mouth_Blue_Light_0' && (child as any).mouthMorphIndex !== undefined) {
-          const mouthMorphIndex = (child as any).mouthMorphIndex;
-
-          if (isSpeaking && currentAudioLevel > 0) {
-            // Use real audio level for mouth sync when speaking
-            mouthMorphRef.current = currentAudioLevel;
-          } else if (isSpeaking) {
-            // Fallback: simulate mouth movement with sine wave
-            mouthMorphRef.current = Math.abs(Math.sin(time * 8)) * 0.5 + 0.3;
-          } else {
-            // Close mouth when not speaking
-            mouthMorphRef.current = Math.max(0, mouthMorphRef.current - 0.1);
-          }
-
-          // Apply morph target value (0 = closed, 1 = open)
-          if (child.morphTargetInfluences) {
-            child.morphTargetInfluences[mouthMorphIndex] = mouthMorphRef.current;
-          }
+      const mouthMesh = mouthMeshRef.current;
+      if (mouthMesh && mouthMesh.morphTargetInfluences && mouthMorphIndexRef.current !== null) {
+        if (isSpeaking && currentAudioLevel > 0) {
+          mouthMorphRef.current = currentAudioLevel;
+        } else if (isSpeaking) {
+          mouthMorphRef.current = Math.abs(Math.sin(time * 8)) * 0.5 + 0.3;
+        } else {
+          mouthMorphRef.current = Math.max(0, mouthMorphRef.current - 0.1);
         }
-      });
+        mouthMesh.morphTargetInfluences[mouthMorphIndexRef.current] = mouthMorphRef.current;
+      }
 
       // Determine robot position based on mode
       const robotX = isARMode ? -2 : 0; // Left side in AR mode, center in 3D mode
 
+      // Cache ref locally to avoid repeated optional chaining
+      const group = groupRef.current;
+
+      // Base target values
+      let targetY = -1;
+      let targetScale = 1.5;
+
+      if (typeof externalScale === 'number') targetScale = externalScale;
+      if (typeof externalYOffset === 'number') targetY += externalYOffset;
+
       switch (animationState) {
         case 'idle':
           // Simple breathing animation - up and down movement
-          groupRef.current.position.x = robotX;
-          groupRef.current.position.y = -1 + Math.sin(time * 0.8) * 0.03;
-          groupRef.current.position.z = 0;
-          groupRef.current.rotation.y = 0; // No rotation
-          groupRef.current.scale.setScalar(1.5);
+          group.position.x = robotX;
+          group.position.y = targetY + Math.sin(time * 0.8) * 0.03;
+          group.position.z = 0;
+          group.rotation.y = 0; // No rotation
+          group.scale.setScalar(targetScale);
           break;
 
         case 'listening':
           // Breathing animation while listening
-          groupRef.current.position.x = robotX;
-          groupRef.current.position.y = -1 + Math.sin(time * 0.8) * 0.03;
-          groupRef.current.position.z = 0;
-          groupRef.current.rotation.y = 0; // No rotation
-          groupRef.current.scale.setScalar(1.5);
+          group.position.x = robotX;
+          group.position.y = targetY + Math.sin(time * 0.8) * 0.03;
+          group.position.z = 0;
+          group.rotation.y = 0; // No rotation
+          group.scale.setScalar(targetScale);
           break;
 
         case 'speaking':
           // No breathing animation when speaking - only mouth moves
-          groupRef.current.position.x = robotX;
-          groupRef.current.position.y = -1; // Static position
-          groupRef.current.position.z = 0;
-          groupRef.current.rotation.y = 0; // No rotation
-          groupRef.current.scale.setScalar(1.5); // Static scale
+          group.position.x = robotX;
+          group.position.y = targetY; // Static position
+          group.position.z = 0;
+          group.rotation.y = 0; // No rotation
+          group.scale.setScalar(targetScale); // Static scale
           break;
 
         case 'processing':
           // Breathing animation while processing
-          groupRef.current.position.x = robotX;
-          groupRef.current.position.y = -1 + Math.sin(time * 0.8) * 0.03;
-          groupRef.current.position.z = 0;
-          groupRef.current.rotation.y = 0; // No rotation
-          groupRef.current.scale.setScalar(1.5);
+          group.position.x = robotX;
+          group.position.y = targetY + Math.sin(time * 0.8) * 0.03;
+          group.position.z = 0;
+          group.rotation.y = 0; // No rotation
+          group.scale.setScalar(targetScale);
           break;
       }
     }
   });
 
   return (
-    <group ref={groupRef} castShadow>
+    <group ref={groupRef} castShadow frustumCulled={false}>
       <primitive
         object={scene}
         scale={[1.5, 1.5, 1.5]}
@@ -198,7 +262,7 @@ function LoadingFallback() {
   );
 }
 
-export function Robot({ isListening, isSpeaking, isProcessing, currentAudioLevel, isARMode = false, emotion = 'neutral' }: RobotProps) {
+export function Robot({ isListening, isSpeaking, isProcessing, currentAudioLevel, isARMode = false, emotion = 'neutral', externalScale, externalYOffset }: RobotProps) {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <RobotModel
@@ -208,6 +272,8 @@ export function Robot({ isListening, isSpeaking, isProcessing, currentAudioLevel
         currentAudioLevel={currentAudioLevel}
         isARMode={isARMode}
         emotion={emotion}
+        externalScale={externalScale}
+        externalYOffset={externalYOffset}
       />
     </Suspense>
   );
