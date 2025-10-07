@@ -9,9 +9,10 @@ import { LightingRig } from './LightingRig';
 import { useConversation } from '../contexts/ConversationContext';
 import { useVoiceState } from '../contexts/VoiceStateContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { usePluginContextSafe } from '../contexts/PluginContext';
 import { useLightingEstimation } from '../hooks/useLightingEstimation';
 import { useFaceTracking } from '../hooks/useFaceTracking';
-import { PCFSoftShadowMap } from 'three';
+import { PCFSoftShadowMap, WebGLRenderer } from 'three';
 
 interface ARSceneProps {
     className?: string;
@@ -24,8 +25,9 @@ export function ARScene({ className = '' }: ARSceneProps) {
     const [isWebcamActive, setIsWebcamActive] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const { theme } = useTheme();
-    const { messages } = useConversation();
+    useConversation();
     const { voiceState } = useVoiceState();
+    const pluginContext = usePluginContextSafe();
 
     // Detect mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -63,7 +65,7 @@ export function ARScene({ className = '' }: ARSceneProps) {
             );
             setIsLoading(false);
         }
-    }, []);
+    }, [isMobile]);
 
     // Cleanup webcam stream
     const cleanupWebcam = useCallback(() => {
@@ -106,9 +108,7 @@ export function ARScene({ className = '' }: ARSceneProps) {
         initializeWebcam();
     };
 
-    // Get the latest message to determine robot state
-    const latestMessage = messages[messages.length - 1];
-    const isProcessing = messages.length > 0 && !latestMessage?.isUser;
+    // Access latest message if needed in future (placeholder intentionally removed to satisfy linter)
 
     // Fallback background when webcam is not available
     const getFallbackBackground = () => {
@@ -218,14 +218,13 @@ export function ARScene({ className = '' }: ARSceneProps) {
                     }}
                     dpr={[1, 1.75]}
                     onCreated={({ gl }) => {
+                        const renderer = gl as WebGLRenderer;
                         // Slightly higher exposure for webcam backdrop
-                        try {
-                            (gl as any).toneMappingExposure = 1.02;
-                            // Ensure soft shadow mapping is enabled
-                            (gl as any).shadowMap.enabled = true;
-                            (gl as any).shadowMap.type = PCFSoftShadowMap;
-                            (gl as any).physicallyCorrectLights = true;
-                        } catch { }
+                        renderer.toneMappingExposure = 1.02;
+                        // Ensure soft shadow mapping is enabled
+                        renderer.shadowMap.enabled = true;
+                        renderer.shadowMap.type = PCFSoftShadowMap;
+                        // Note: physicallyCorrectLights is removed in newer three versions; using defaults.
                     }}
                 >
                     {/* Cinematic but adaptive lighting for AR */}

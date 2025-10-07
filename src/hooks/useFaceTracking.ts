@@ -67,7 +67,6 @@ export function useFaceTracking(videoRef: MutableRefObject<HTMLVideoElement | nu
                 // Very rough proxy: find the vertical center brightness dip (face vs background),
                 // and use skin tone cluster size via chroma heuristic. This is intentionally simple
                 // to keep CPU low; swapping to MediaPipe would provide better stability.
-                let sumY = 0;
                 let count = 0;
                 for (let y = 0; y < canvas.height; y++) {
                     let rowScore = 0;
@@ -79,13 +78,12 @@ export function useFaceTracking(videoRef: MutableRefObject<HTMLVideoElement | nu
                         if (skinLike) rowScore += 255 - Math.abs(140 - brightness);
                     }
                     if (rowScore > canvas.width * 20) { // tuned threshold
-                        sumY += y; count++;
+                        count++;
                     }
                 }
 
                 let normDist = 0.3;
                 if (count > 0) {
-                    const avgY = sumY / count; // 0..h
                     // Use vertical position and count as distance proxy
                     const presence = clamp(count / canvas.height, 0, 1); // size proxy
                     normDist = clamp(1 - presence, 0, 1); // larger presence => closer => smaller distance

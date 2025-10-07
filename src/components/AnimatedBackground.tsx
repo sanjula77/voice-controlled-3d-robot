@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useVoiceState } from '../contexts/VoiceStateContext';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface AnimatedBackgroundProps {
@@ -8,7 +7,6 @@ interface AnimatedBackgroundProps {
 }
 
 export function AnimatedBackground({ className = '', isARMode = false }: AnimatedBackgroundProps) {
-    const { voiceState } = useVoiceState();
     const { theme } = useTheme();
 
     // Choose palette based on voice state
