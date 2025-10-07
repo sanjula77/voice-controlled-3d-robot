@@ -6,6 +6,7 @@ import { speechService } from '../services/speechService';
 import { aiService, AIResponse } from '../services/aiService';
 import { useTheme } from '../contexts/ThemeContext';
 import { useVoiceState } from '../contexts/VoiceStateContext';
+import { usePluginContextSafe } from '../contexts/PluginContext';
 
 interface VoiceControlsProps {
     onMessage?: (message: { text: string; isUser: boolean; timestamp: Date }) => void;
@@ -14,6 +15,7 @@ interface VoiceControlsProps {
 export function VoiceControls({ onMessage }: VoiceControlsProps) {
     const { theme } = useTheme();
     const { setVoiceState, updateAudioLevel, analyzeSentiment } = useVoiceState();
+    const pluginContext = usePluginContextSafe();
     const [apiKey, setApiKey] = useState('');
     const [showApiKeyInput, setShowApiKeyInput] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -91,27 +93,47 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
             setIsThinking(true);
             setVoiceState({ isThinking: true });
 
-            // Get AI response with multi-model fallback
-            const aiResponse: AIResponse = await aiService.getAIResponse(userText);
-            console.log('AI response:', aiResponse);
+            let response = '';
+            let usedPlugin = false;
 
-            // Update model information
-            if (aiResponse.modelUsed) {
-                setLastModelUsed(aiResponse.modelUsed);
+            // Try plugin system first (if available)
+            if (pluginContext) {
+                try {
+                    const pluginResponse = await pluginContext.processUserInput(userText);
+                    if (pluginResponse.pluginUsed) {
+                        // Plugin handled the request
+                        console.log('Plugin response:', pluginResponse);
+                        response = pluginResponse.result.summary;
+                        usedPlugin = true;
+                    }
+                } catch (error) {
+                    console.log('Plugin system not available or failed, falling back to AI');
+                }
             }
 
-            // Update model attempts for debugging
-            const attempts = aiService.getModelAttempts();
-            setModelAttempts(attempts.map(attempt =>
-                `${attempt.model}: ${attempt.success ? '✅' : '❌'} (${attempt.responseTime}ms)`
-            ));
+            // Fall back to AI if no plugin was used
+            if (!usedPlugin) {
+                const aiResponse: AIResponse = await aiService.getAIResponse(userText);
+                console.log('AI response:', aiResponse);
 
-            // Use AI response or fallback
-            const response = aiResponse.success
-                ? aiResponse.content
-                : aiService.generateFallbackResponse(userText);
+                // Update model information
+                if (aiResponse.modelUsed) {
+                    setLastModelUsed(aiResponse.modelUsed);
+                }
 
-            // Add AI response to conversation
+                // Update model attempts for debugging
+                const attempts = aiService.getModelAttempts();
+                setModelAttempts(attempts.map(attempt =>
+                    `${attempt.model}: ${attempt.success ? '✅' : '❌'} (${attempt.responseTime}ms)`
+                ));
+
+                // Use AI response or fallback
+                response = aiResponse.success
+                    ? aiResponse.content
+                    : aiService.generateFallbackResponse(userText);
+            }
+
+            // Add response to conversation
             if (onMessage) {
                 onMessage({
                     text: response,
@@ -119,6 +141,15 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
                     timestamp: new Date()
                 });
             }
+
+            // Hide thinking indicator
+            setIsThinking(false);
+            setVoiceState({ isThinking: false });
+
+            // Speak the response
+            console.log('Attempting to speak response...');
+            await textToSpeech.speak(response);
+            console.log('Speech completed');
 
             // Update emotion after user message processed
             try {
@@ -131,10 +162,6 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
             setIsThinking(false);
             setVoiceState({ isThinking: false });
 
-            // Speak the response
-            console.log('Attempting to speak response...');
-            await textToSpeech.speak(response);
-            console.log('Speech completed');
         } catch (error) {
             console.error('Error processing user input:', error);
             setIsThinking(false);
@@ -154,7 +181,7 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
     // Status label/style for compact text-only chip (no icons)
     const getStatusLabel = () => {
         if (speechRecognition.isListening) return 'Listening';
-        if (isThinking) return 'Thinking';
+        if (isThinking || pluginContext?.isProcessing) return 'Thinking';
         if (isProcessing) return 'Processing';
         if (textToSpeech.isSpeaking) return 'Speaking';
         return 'Ready';
@@ -180,7 +207,7 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
             };
 
         if (speechRecognition.isListening) return `${tone.base} ${tone.listening}`;
-        if (isThinking) return `${tone.base} ${tone.thinking}`;
+        if (isThinking || pluginContext?.isProcessing) return `${tone.base} ${tone.thinking}`;
         if (isProcessing) return `${tone.base} ${tone.processing}`;
         if (textToSpeech.isSpeaking) return `${tone.base} ${tone.speaking}`;
         return `${tone.base} ${tone.ready}`;
@@ -239,17 +266,17 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
                     <button
                         aria-label={speechRecognition.isListening ? 'Stop listening' : 'Start listening'}
                         onClick={speechRecognition.toggleListening}
-                        disabled={isProcessing || isThinking || textToSpeech.isSpeaking}
+                        disabled={isProcessing || isThinking || pluginContext?.isProcessing || textToSpeech.isSpeaking}
                         className={`relative w-12 h-12 rounded-xl flex items-center justify-center glow-effect ${speechRecognition.isListening
                             ? 'bg-rose-500'
-                            : isThinking
+                            : (isThinking || pluginContext?.isProcessing)
                                 ? 'bg-violet-500'
                                 : 'bg-indigo-500'
-                            } ${isProcessing || isThinking || textToSpeech.isSpeaking ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
+                            } ${isProcessing || isThinking || pluginContext?.isProcessing || textToSpeech.isSpeaking ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105 transition-transform'}`}
                     >
-                        {speechRecognition.isListening ? <MicOff className="w-5 h-5 text-white" /> : isThinking ? <Brain className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
+                        {speechRecognition.isListening ? <MicOff className="w-5 h-5 text-white" /> : (isThinking || pluginContext?.isProcessing) ? <Brain className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
                         {speechRecognition.isListening && <div className="absolute inset-0 rounded-xl border-2 border-rose-300 animate-ping" />}
-                        {isThinking && <div className="absolute inset-0 rounded-xl border-2 border-violet-300 animate-pulse" />}
+                        {(isThinking || pluginContext?.isProcessing) && <div className="absolute inset-0 rounded-xl border-2 border-violet-300 animate-pulse" />}
                     </button>
 
                     {/* Content */}
@@ -260,6 +287,12 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
                                 <Brain className="w-3 h-3" />
                                 <span className="font-medium">{aiService.isReady() ? 'AI Brain' : 'Basic Mode'}</span>
                             </span>
+                            {pluginContext && (
+                                <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-green-500/25 text-green-200' : 'bg-green-600/10 text-green-700'}`}>
+                                    <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                                    <span className="font-medium">Plugins</span>
+                                </span>
+                            )}
                             {/* Model name removed per design */}
                         </div>
                         {/* Transcript preview removed per design */}
@@ -341,6 +374,7 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
                     </div>
                 </div>
             )}
+
         </div>
     );
 }

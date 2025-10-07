@@ -11,6 +11,8 @@ import { VoiceControls } from './components/VoiceControls';
 import { ConversationLog } from './components/ConversationLog';
 import { StartLexiButton } from './components/StartLexiButton';
 import { AnimatedBackground } from './components/AnimatedBackground';
+import { PluginProvider, usePluginContextSafe } from './contexts/PluginContext';
+import { PluginCardSimple } from './components/PluginCardSimple';
 import { Home, MessageSquare, Box as BoxIcon, Info } from 'lucide-react';
 
 function VoiceControlsWithConversation() {
@@ -26,6 +28,7 @@ function VoiceControlsWithConversation() {
 function AppContent() {
   const { theme } = useTheme();
   const { toggleVisibility } = useConversation();
+  const pluginContext = usePluginContextSafe();
   const [isLexiInitialized, setIsLexiInitialized] = useState(false);
   const [isARMode, setIsARMode] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -170,6 +173,15 @@ function AppContent() {
       {!isLexiInitialized && (
         <StartLexiButton onInitialized={handleLexiInitialized} />
       )}
+
+
+      {/* Plugin Card - Display results from test panel */}
+      {pluginContext?.currentResult && (
+        <PluginCardSimple
+          result={pluginContext.currentResult}
+          onClose={pluginContext.clearResult}
+        />
+      )}
     </div>
   );
 }
@@ -194,7 +206,9 @@ function App() {
     <ThemeProvider>
       <ConversationProvider>
         <VoiceStateProvider>
-          <AppContent />
+          <PluginProvider>
+            <AppContent />
+          </PluginProvider>
         </VoiceStateProvider>
       </ConversationProvider>
     </ThemeProvider>
