@@ -1,7 +1,9 @@
 import { Canvas } from '@react-three/fiber';
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { Scene } from './components/Scene';
 import { ARScene } from './components/ARScene';
+import { HolographicScene } from './components/3d/HolographicScene';
+import { HolographicOverlay } from './components/ui/HolographicOverlay';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -13,6 +15,7 @@ import { StartLexiButton } from './components/StartLexiButton';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { PluginProvider, usePluginContextSafe } from './contexts/PluginContext';
 import { PluginCardSimple } from './components/PluginCardSimple';
+import { ARPluginCard } from './components/ARPluginCard';
 import { Home, MessageSquare, Box as BoxIcon, Info } from 'lucide-react';
 
 function VoiceControlsWithConversation() {
@@ -31,12 +34,24 @@ function AppContent() {
   const pluginContext = usePluginContextSafe();
   const [isLexiInitialized, setIsLexiInitialized] = useState(false);
   const [isARMode, setIsARMode] = useState(false);
+  const [isHolographicMode, setIsHolographicMode] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
 
   const handleLexiInitialized = () => {
     setIsLexiInitialized(true);
   };
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
 
   const getCanvasBackground = () => {
@@ -48,7 +63,9 @@ function AppContent() {
   };
 
   return (
-    <div className={`h-screen w-full overflow-hidden relative transition-colors duration-300 ${theme === 'dark' ? 'holographic-bg' : 'holographic-bg-light'}`}>
+    <div className={`h-screen w-full overflow-hidden relative transition-colors duration-300 ${isHolographicMode ? 'holographic-bg' :
+      theme === 'dark' ? 'holographic-bg' : 'holographic-bg-light'
+      }`}>
       {/* Animated Background (disabled in AR to keep webcam visible) */}
       {!isARMode && (
         <AnimatedBackground className="pointer-events-none" isARMode={false} />
@@ -75,10 +92,10 @@ function AppContent() {
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-20 px-6 py-4">
         <div className="max-w-7xl mx-auto">
-          <div className={`${theme === 'dark' ? 'glass-panel-dark' : 'glass-panel'} rounded-2xl px-6 py-4 flex items-center justify-between shadow-2xl`}>
+          <div className={`ar-floating-card rounded-2xl px-6 py-4 flex items-center justify-between bg-black/30 backdrop-blur-md`}>
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center glow-effect">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
                 <span className="text-white text-lg">🤖</span>
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
@@ -87,11 +104,11 @@ function AppContent() {
             </div>
 
             {/* Center Navigation */}
-            <div className={`flex items-center gap-1 rounded-xl px-2 py-2 ${theme === 'dark' ? 'glass-panel' : 'glass-panel'}`}>
+            <div className={`flex items-center gap-1 rounded-xl px-2 py-2 backdrop-blur-sm border border-white/20 bg-black/10`}>
               <NavLink icon={Home} label="Home" active onClick={() => { }} />
               <NavLink icon={MessageSquare} label="Chat" onClick={() => toggleVisibility()} />
-              <NavLink icon={BoxIcon} label="3D Mode" onClick={() => setIsARMode(false)} />
-              {/* Removed duplicate 3D Mode link to avoid redundancy with right chip */}
+              <NavLink icon={BoxIcon} label="3D Mode" onClick={() => { setIsARMode(false); setIsHolographicMode(false); }} />
+              <NavLink icon={BoxIcon} label="Holographic" onClick={() => { setIsARMode(false); setIsHolographicMode(true); }} />
               <NavLink icon={Info} label="About" onClick={() => setShowAbout(true)} />
             </div>
 
@@ -100,11 +117,11 @@ function AppContent() {
               {/* 3D/AR Toggle */}
               <button
                 onClick={() => setIsARMode(!isARMode)}
-                className={`glass-panel rounded-xl px-4 py-2 flex items-center gap-2 transition-all hover:scale-105 ${!isARMode ? 'glow-effect bg-indigo-500/20' : ''}`}
+                className={`backdrop-blur-md border border-white/30 bg-black/7 rounded-xl px-4 py-2 flex items-center gap-2 ${!isARMode ? 'bg-indigo-500/30' : ''}`}
                 title={isARMode ? 'Switch to 3D Mode' : 'Switch to AR Mode'}
               >
-                <BoxIcon className={`w-4 h-4 ${!isARMode ? 'text-indigo-400' : 'text-slate-400'}`} />
-                <span className={`${!isARMode ? 'text-indigo-400' : 'text-slate-400'} text-sm font-medium`}>{!isARMode ? '3D' : 'AR'}</span>
+                <BoxIcon className={`w-4 h-4 ${!isARMode ? 'text-indigo-300' : 'text-white'}`} />
+                <span className={`${!isARMode ? 'text-indigo-300' : 'text-white'} text-sm font-medium`}>{!isARMode ? '3D' : 'AR'}</span>
               </button>
               <ThemeToggle />
             </div>
@@ -112,9 +129,14 @@ function AppContent() {
         </div>
       </div>
 
-      {/* 3D Canvas or AR Scene */}
+      {/* 3D Canvas, AR Scene, or Holographic Scene */}
       {isARMode ? (
         <ARScene className="w-full h-full" />
+      ) : isHolographicMode ? (
+        <div className="w-full h-full relative">
+          <HolographicScene />
+          <HolographicOverlay isMobile={isMobile} />
+        </div>
       ) : (
         <Suspense fallback={<LoadingSpinner />}>
           <Canvas
@@ -144,7 +166,7 @@ function AppContent() {
       {showAbout && (
         <div className="fixed inset-0 z-30 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowAbout(false)} />
-          <div className="relative z-40 glass-panel-dark rounded-2xl p-6 w-[28rem] max-w-[92vw] shadow-2xl border border-white/10">
+          <div className="relative z-40 ar-floating-card rounded-2xl p-6 w-[28rem] max-w-[92vw]">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold text-slate-200">About Talking Lexi</h3>
               <button className="text-slate-400 hover:text-slate-200" onClick={() => setShowAbout(false)}>✕</button>
@@ -177,10 +199,17 @@ function AppContent() {
 
       {/* Plugin Card - Display results from test panel */}
       {pluginContext?.currentResult && (
-        <PluginCardSimple
-          result={pluginContext.currentResult}
-          onClose={pluginContext.clearResult}
-        />
+        isARMode ? (
+          <ARPluginCard
+            result={pluginContext.currentResult}
+            onClose={pluginContext.clearResult}
+          />
+        ) : (
+          <PluginCardSimple
+            result={pluginContext.currentResult}
+            onClose={pluginContext.clearResult}
+          />
+        )
       )}
     </div>
   );
@@ -189,9 +218,9 @@ function AppContent() {
 function NavLink({ icon: Icon, label, active = false, onClick }: { icon: any; label: string; active?: boolean; onClick?: () => void }) {
   return (
     <button
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${active
-        ? 'bg-indigo-500/20 text-indigo-400'
-        : 'text-slate-400 hover:text-slate-300 hover:bg-white/5'
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg ${active
+        ? 'text-white-300'
+        : 'text-white/90'
         }`}
       onClick={onClick}
     >
