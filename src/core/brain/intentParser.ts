@@ -84,6 +84,24 @@ export class IntentParser {
     return !!import.meta.env.VITE_OPENROUTER_API_KEY;
   }
 
+  // Clean JSON response to handle markdown formatting
+  private cleanJsonResponse(content: string): string {
+    // Remove markdown code block markers
+    let cleaned = content
+      .replace(/^```json\s*/i, '')  // Remove opening ```json
+      .replace(/```\s*$/i, '')      // Remove closing ```
+      .replace(/^```\s*/i, '')      // Remove opening ``` (without json)
+      .trim();
+
+    // Try to find JSON object within the content
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[0];
+    }
+
+    return cleaned;
+  }
+
   private async aiIntentDetection(input: string): Promise<Intent | null> {
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -139,7 +157,12 @@ Examples:
         return null;
       }
 
-      const intent = JSON.parse(content);
+      // Clean the content to handle markdown-wrapped JSON
+      const cleanedContent = this.cleanJsonResponse(content);
+      console.log('🔧 Original content:', content);
+      console.log('🔧 Cleaned content:', cleanedContent);
+      const intent = JSON.parse(cleanedContent);
+      console.log('🔧 Parsed intent:', intent);
       return intent.confidence > 0.7 ? intent : null;
     } catch (error) {
       console.error('AI intent detection error:', error);

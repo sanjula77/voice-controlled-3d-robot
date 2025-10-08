@@ -175,7 +175,7 @@ export const PluginCardSimple: React.FC<PluginCardSimpleProps> = ({ result, onCl
     };
 
     return (
-        <div className="fixed top-20 right-4 w-96 max-w-[calc(100vw-2rem)] z-30 max-h-[calc(100vh-6rem)]">
+        <div className="fixed top-32 right-4 bottom-8 w-96 max-w-[calc(100vw-2rem)] z-30 max-h-[calc(100vh-10rem)]">
             <div className="glass-panel-dark rounded-2xl p-6 shadow-2xl border border-white/10 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4 flex-shrink-0">
                     <div className="flex items-center gap-3">
@@ -189,7 +189,7 @@ export const PluginCardSimple: React.FC<PluginCardSimpleProps> = ({ result, onCl
                         <X className="w-5 h-5" />
                     </button>
                 </div>
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+                <div className="flex-1 overflow-y-auto scrollbar-thin">
                     {renderSimpleContent()}
                 </div>
             </div>

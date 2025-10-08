@@ -190,7 +190,7 @@ export const PluginCard: React.FC<PluginCardProps> = ({ result, onClose }) => {
     };
 
     return (
-        <div className="fixed top-20 right-4 bottom-4 w-96 max-w-[calc(100vw-2rem)] z-30 max-h-[calc(100vh-6rem)] sm:w-80 md:w-96">
+        <div className="fixed top-32 right-4 bottom-8 w-96 max-w-[calc(100vw-2rem)] z-30 max-h-[calc(100vh-10rem)] sm:w-80 md:w-96">
             <div className="glass-panel-dark rounded-2xl p-4 shadow-2xl border border-white/10 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4 flex-shrink-0">
                     <div className="flex items-center gap-3">
@@ -204,7 +204,7 @@ export const PluginCard: React.FC<PluginCardProps> = ({ result, onClose }) => {
                         <X className="w-5 h-5" />
                     </button>
                 </div>
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+                <div className="flex-1 overflow-y-auto scrollbar-thin">
                     {renderCardContent()}
                 </div>
             </div>

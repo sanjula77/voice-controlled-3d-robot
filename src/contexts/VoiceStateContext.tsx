@@ -35,17 +35,34 @@ export function VoiceStateProvider({ children }: VoiceStateProviderProps) {
 
     async function analyzeSentiment(text: string): Promise<EmotionLabel> {
         try {
+            console.log('🎨 Sentiment API called for:', text);
             const emotion = await analyzeSentimentAPI(text);
-            setVoiceStateInternal(prev => ({ ...prev, emotion }));
+            console.log('🎨 Sentiment API returned:', emotion);
+            setVoiceStateInternal(prev => {
+                console.log('🎨 Setting emotion from', prev.emotion, 'to', emotion);
+                return { ...prev, emotion };
+            });
             return emotion;
-        } catch {
-            setVoiceStateInternal(prev => ({ ...prev, emotion: 'neutral' }));
+        } catch (error) {
+            console.error('🎨 Sentiment API failed, using neutral:', error);
+            setVoiceStateInternal(prev => {
+                console.log('🎨 Setting emotion from', prev.emotion, 'to neutral (fallback)');
+                return { ...prev, emotion: 'neutral' };
+            });
             return 'neutral';
         }
     }
 
     const setVoiceState = (newState: Partial<VoiceState>) => {
-        setVoiceStateInternal(prev => ({ ...prev, ...newState }));
+        setVoiceStateInternal(prev => {
+            // Preserve emotion unless explicitly being set
+            const updatedState = { ...prev, ...newState };
+            if (!newState.hasOwnProperty('emotion') && prev.emotion) {
+                // Keep existing emotion if not being explicitly changed
+                updatedState.emotion = prev.emotion;
+            }
+            return updatedState;
+        });
     };
 
     const updateAudioLevel = (level: number) => {

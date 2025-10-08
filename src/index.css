@@ -49,6 +49,16 @@
     position: relative;
   }
 
+  /* Hidden scrollbar styles - keeps functionality but hides visual scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    display: none; /* WebKit browsers (Chrome, Safari, Edge) */
+  }
+
   .holographic-bg::before {
     content: '';
     position: absolute;

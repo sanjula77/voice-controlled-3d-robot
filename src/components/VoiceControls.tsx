@@ -88,10 +88,21 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
             });
         }
 
+        // Update emotion immediately based on user input (before processing)
         try {
-            // Show thinking indicator
+            console.log('🎨 Analyzing sentiment for:', userText);
+            const emotion = await analyzeSentiment(userText);
+            console.log('🎨 Emotion set to:', emotion);
+        } catch (error) {
+            console.error('🎨 Sentiment analysis failed:', error);
+            // Sentiment analysis failed, continue with neutral emotion
+        }
+
+        try {
+            // Show thinking indicator immediately
             setIsThinking(true);
             setVoiceState({ isThinking: true });
+            console.log('🤔 Starting AI processing...');
 
             let response = '';
             let usedPlugin = false;
@@ -113,8 +124,9 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
 
             // Fall back to AI if no plugin was used
             if (!usedPlugin) {
+                console.log('🧠 Calling AI service...');
                 const aiResponse: AIResponse = await aiService.getAIResponse(userText);
-                console.log('AI response:', aiResponse);
+                console.log('✅ AI response received:', aiResponse);
 
                 // Update model information
                 if (aiResponse.modelUsed) {
@@ -150,17 +162,6 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
             console.log('Attempting to speak response...');
             await textToSpeech.speak(response);
             console.log('Speech completed');
-
-            // Update emotion after user message processed
-            try {
-                await analyzeSentiment(userText);
-            } catch (error) {
-                // Sentiment analysis failed, continue with neutral emotion
-            }
-
-            // Hide thinking indicator
-            setIsThinking(false);
-            setVoiceState({ isThinking: false });
 
         } catch (error) {
             console.error('Error processing user input:', error);

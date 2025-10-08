@@ -27,40 +27,40 @@ export interface ModelAttempt {
   responseTime?: number;
 }
 
-// Model configuration with fallback chain
+// Model configuration with fallback chain - optimized for speed
 const MODEL_CONFIGS: ModelConfig[] = [
-  {
-    name: 'DeepSeek V3.1',
-    model: 'deepseek/deepseek-chat-v3.1:free',
-    timeout: 15000,
-    maxTokens: 150,
-    temperature: 0.7
-  },
-  {
-    name: 'Mistral Small',
-    model: 'mistralai/mistral-small-3.2-24b-instruct:free',
-    timeout: 15000,
-    maxTokens: 150,
-    temperature: 0.7
-  },
-  {
-    name: 'Gemini 2.0 Flash',
-    model: 'google/gemini-2.0-flash-exp:free',
-    timeout: 15000,
-    maxTokens: 150,
-    temperature: 0.7
-  },
   {
     name: 'Llama 3.3 70B',
     model: 'meta-llama/llama-3.3-70b-instruct:free',
-    timeout: 15000,
+    timeout: 8000,  // Reduced from 15000ms - this model works with your privacy settings
     maxTokens: 150,
     temperature: 0.7
   },
   {
     name: 'Qwen 3 14B',
     model: 'qwen/qwen3-14b:free',
-    timeout: 15000,
+    timeout: 8000,  // Reduced from 15000ms
+    maxTokens: 150,
+    temperature: 0.7
+  },
+  {
+    name: 'DeepSeek V3.1',
+    model: 'deepseek/deepseek-chat-v3.1:free',
+    timeout: 3000,  // Reduced from 15000ms - fails due to privacy settings
+    maxTokens: 150,
+    temperature: 0.7
+  },
+  {
+    name: 'Mistral Small',
+    model: 'mistralai/mistral-small-3.2-24b-instruct:free',
+    timeout: 3000,  // Reduced from 15000ms - fails due to privacy settings
+    maxTokens: 150,
+    temperature: 0.7
+  },
+  {
+    name: 'Gemini 2.0 Flash',
+    model: 'google/gemini-2.0-flash-exp:free',
+    timeout: 3000,  // Reduced from 15000ms - fails due to privacy settings
     maxTokens: 150,
     temperature: 0.7
   }

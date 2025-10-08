@@ -73,14 +73,23 @@ export async function analyzeSentimentAPI(text: string): Promise<EmotionLabel> {
 
 // Fallback simple sentiment analysis
 function analyzeSentimentSimple(text: string): EmotionLabel {
-  const positiveWords = ['happy', 'great', 'amazing', 'wonderful', 'excellent', 'love', 'like', 'good', 'fantastic', 'awesome'];
-  const negativeWords = ['sad', 'terrible', 'awful', 'hate', 'bad', 'worried', 'concerned', 'angry', 'frustrated', 'disappointed'];
+  const positiveWords = ['happy', 'great', 'amazing', 'wonderful', 'excellent', 'love', 'like', 'good', 'fantastic', 'awesome', 'joy', 'excited', 'pleased', 'delighted', 'thrilled', 'cheerful', 'glad', 'content', 'satisfied', 'positive'];
+  const negativeWords = ['sad', 'terrible', 'awful', 'hate', 'bad', 'worried', 'concerned', 'angry', 'frustrated', 'disappointed', 'upset', 'mad', 'annoyed', 'depressed', 'miserable', 'negative', 'unhappy', 'displeased'];
   
   const lowerText = text.toLowerCase();
   const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
   const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
   
-  if (positiveCount > negativeCount) return 'positive';
-  if (negativeCount > positiveCount) return 'concerned';
+  console.log('🎨 Simple sentiment analysis:', { text, positiveCount, negativeCount });
+  
+  if (positiveCount > negativeCount) {
+    console.log('🎨 Simple analysis result: positive');
+    return 'positive';
+  }
+  if (negativeCount > positiveCount) {
+    console.log('🎨 Simple analysis result: concerned');
+    return 'concerned';
+  }
+  console.log('🎨 Simple analysis result: neutral');
   return 'neutral';
 }
