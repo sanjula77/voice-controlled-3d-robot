@@ -156,9 +156,192 @@ body {
   overflow: hidden;
 }
 
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* AR Cards Container - Flexbox Layout */
+  .ar-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-end;
+    padding: 20px 20px 20px 20px;
+    padding-top: 10px;
+    padding-right: 30px;
+    min-height: 100vh;
+  }
+
+  /* AR Floating Cards - Natural Flow */
+  .ar-floating-card {
+    position: relative;
+    background: transparent;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 20px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+      0 8px 25px rgba(0, 0, 0, 0.1),
+      0 0 20px rgba(0, 255, 255, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transform-origin: center;
+  }
+
+
+  /* Card sizes - no positioning needed */
+  .ar-weather-card {
+    width: 320px;
+    min-height: 140px;
+  }
+
+  .ar-data-card {
+    width: 320px;
+    min-height: 160px;
+  }
+
+  .ar-news-card {
+    width: 300px;
+    min-height: 220px;
+  }
+
+  .ar-search-card {
+    width: 350px;
+    min-height: 140px;
+  }
+
+  .ar-youtube-card {
+    width: 300px;
+    min-height: 200px;
+  }
+
+  .ar-floating-close {
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  }
+
+
+  .ar-text-glow {
+    text-shadow: 
+      0 0 10px rgba(0, 255, 255, 0.3),
+      0 0 20px rgba(0, 255, 255, 0.1);
+  }
+
+
+  .ar-particles {
+    background-image: 
+      radial-gradient(2px 2px at 20px 30px, rgba(0, 255, 255, 0.3), transparent),
+      radial-gradient(2px 2px at 40px 70px, rgba(255, 0, 100, 0.2), transparent),
+      radial-gradient(1px 1px at 90px 40px, rgba(0, 255, 100, 0.3), transparent),
+      radial-gradient(1px 1px at 130px 80px, rgba(255, 255, 255, 0.2), transparent);
+    background-repeat: repeat;
+    background-size: 150px 100px;
+    animation: ar-float 20s linear infinite;
+  }
+
+  .ar-enter-animation {
+    animation: ar-appear 0.6s ease-out forwards;
+  }
+
+  @keyframes ar-float {
+    0% { transform: translateY(0px) translateX(0px); }
+    33% { transform: translateY(-10px) translateX(5px); }
+    66% { transform: translateY(5px) translateX(-3px); }
+    100% { transform: translateY(0px) translateX(0px); }
+  }
+
+  @keyframes ar-appear {
+    0% {
+      opacity: 0;
+      transform: scale(0.9) translateY(20px);
+      filter: blur(10px);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.02) translateY(-5px);
+      filter: blur(2px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0px);
+      filter: blur(0px);
+    }
+  }
+
+  .ar-pulse {
+    animation: ar-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes ar-pulse {
+    0%, 100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+  }
+
+  /* Holographic Effects */
+  .holographic-bg {
+    background: linear-gradient(135deg, #030014 0%, #0a001f 50%, #030014 100%);
+    position: relative;
+  }
+
+  .holographic-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(0, 255, 242, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 50%, rgba(183, 148, 246, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .holographic-glow {
+    box-shadow: 
+      0 0 20px rgba(0, 255, 242, 0.3),
+      0 0 40px rgba(0, 255, 242, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .holographic-glow-violet {
+    box-shadow: 
+      0 0 20px rgba(183, 148, 246, 0.3),
+      0 0 40px rgba(183, 148, 246, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .shadow-3xl {
+    box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Custom scrollbar for holographic mode */
+  .holographic-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .holographic-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+  }
+
+  .holographic-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #00fff2, #b794f6);
+    border-radius: 4px;
+  }
+
+  .holographic-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #00e6d6, #a78bfa);
+  }
