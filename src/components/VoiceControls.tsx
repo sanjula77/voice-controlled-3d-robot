@@ -216,10 +216,7 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
 
     if (showApiKeyInput) {
         return (
-            <div className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 z-20 p-4 rounded-xl shadow-lg border transition-colors duration-300 ${theme === 'dark'
-                ? 'bg-slate-800/90 text-slate-200 border-slate-600/50'
-                : 'bg-white/90 text-gray-800 border-gray-200/50'
-                }`}>
+            <div className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 z-20 p-4 rounded-xl ar-floating-card transition-colors duration-300`}>
                 <div className="text-center">
                     <h3 className="text-sm font-semibold mb-2">🧠 Setup AI Brain</h3>
                     <p className="text-xs mb-3 opacity-80">
@@ -260,7 +257,7 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
 
     return (
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20">
-            <div className={`glass-panel-dark rounded-2xl px-5 py-4 shadow-2xl border border-white/10 ${theme === 'dark' ? '' : 'glass-panel'} w-[420px] max-w-[92vw]`}>
+            <div className={`ar-floating-card rounded-2xl px-5 py-4 w-[420px] max-w-[92vw]`}>
                 {/* Layout: avatar | content | controls */}
                 <div className="grid grid-cols-[auto,1fr,auto] items-center gap-5">
                     {/* Mic button */}
@@ -341,7 +338,7 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
 
                 {/* Error */}
                 {(speechRecognition.error || textToSpeech.error) && (
-                    <div className="mt-3 p-2 bg-red-500/20 border border-red-500/30 rounded-lg">
+                    <div className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg backdrop-blur-sm">
                         <p className="text-xs text-red-400">{speechRecognition.error || textToSpeech.error}</p>
                         <button onClick={() => { speechRecognition.clearError(); textToSpeech.clearError(); }} className="text-xs text-red-300 hover:text-red-200 mt-1">Dismiss</button>
                     </div>
@@ -350,10 +347,7 @@ export function VoiceControls({ onMessage }: VoiceControlsProps) {
 
             {/* Debug Panel */}
             {showDebugPanel && aiService.isReady() && (
-                <div className={`absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 p-3 rounded-lg shadow-lg border transition-colors duration-300 max-w-md ${theme === 'dark'
-                    ? 'bg-slate-800/90 text-slate-200 border-slate-600/50'
-                    : 'bg-white/90 text-gray-800 border-gray-200/50'
-                    }`}>
+                <div className={`absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20 p-3 rounded-lg ar-floating-card transition-colors duration-300 max-w-md`}>
                     <div className="text-xs">
                         <div className="font-semibold mb-2">🧠 AI Model Debug</div>
                         {modelAttempts.length > 0 ? (
